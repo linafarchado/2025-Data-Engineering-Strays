@@ -17,7 +17,7 @@ Le composant de stockage des données doit gérer des volumes massifs de donnée
 
 **Composants Nécessaires :**
 
-- **Base de données NoSQL (MongoDB, Consistent et Partition Tolerance) ** : Pour un stockage évolutif sans schéma, capable de gérer une variété de types de données.
+- **Base de données NoSQL (MongoDB, Consistent et Partition Tolerance)** : Pour un stockage évolutif sans schéma, capable de gérer une variété de types de données.
 
 ### Question 2 : Contraintes Commerciales pour "Alerte"
 **What business constraint should the architecture meet to fulfill the requirement describe in the paragraph «Alert»? Which component to choose?**
