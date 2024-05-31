@@ -13,6 +13,7 @@ Ensure you have the following prerequisites installed on your system:
 ## Setup Instructions
 
 1. **Start Zookeeper**: Navigate to the Kafka folder where the `bin` folder is located. Launch Zookeeper using the following command:
+
    ```bash
    bin/zookeeper-server-start.sh config/zookeeper.properties
    ```
@@ -36,7 +37,7 @@ Ensure you have the following prerequisites installed on your system:
 2. Launch SBT: Open a terminal window and run the following command to launch SBT:
 
   ```bash
-    sbt run
+  sbt run
   ```
 
 Verify Data Reception: After running the project, you can verify if the data is being received correctly by using the following command in the Kafka folder:
