@@ -7,14 +7,14 @@ import DefaultJsonProtocol._
 import scala.util.Random
 import java.time.Instant
 
-case class DroneData(
-                      id: String,
-                      timestamp: Long,
-                      latitude: Double,
-                      longitude: Double,
-                      injuryIndex: Double,
-                      animalType: String
-                    )
+final case class DroneData(
+                            id: String,
+                            timestamp: Long,
+                            latitude: Double,
+                            longitude: Double,
+                            injuryIndex: Double,
+                            animalType: String
+                          )
 
 object DroneDataSimulator {
   val animalTypes = List("Cat", "Dog", "Bird", "Rabbit")
@@ -25,7 +25,7 @@ object DroneDataSimulator {
     val latitude = Random.between(-90.0, 90.0)
     val longitude = Random.between(-180.0, 180.0)
     val injuryIndex = Random.between(0.0, 100.0)
-    val animalType = animalTypes(Random.nextInt(animalTypes.length))
+    val animalType = Random.shuffle(animalTypes).head
 
     DroneData(id, timestamp, latitude, longitude, injuryIndex, animalType)
   }
@@ -48,16 +48,16 @@ object Main {
 
     val producer = new KafkaProducer[String, String](props)
 
-    while (true) {
+    lazy val simulateDataEmission: Unit = {
       val data = DroneDataSimulator.generateRandomData()
       val record = new ProducerRecord[String, String](topic, data.id, data.toJson.toString)
       producer.send(record)
-
-      // Print the data being sent
       println(s"Sending data: ${data.toJson}")
 
-      // Simulate the time interval between data emissions
       Thread.sleep(1000)
+      simulateDataEmission
     }
+
+    simulateDataEmission
   }
 }
