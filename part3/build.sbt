@@ -1,0 +1,18 @@
+ThisBuild / version := "0.1.0-SNAPSHOT"
+ThisBuild / scalaVersion := "2.13.8"
+
+lazy val root = (project in file("."))
+  .settings(
+    name := "part3",
+    libraryDependencies ++= Seq(
+      "org.apache.spark" %% "spark-core" % "3.3.0",
+      "org.apache.spark" %% "spark-sql" % "3.3.0",
+      "org.apache.spark" %% "spark-sql-kafka-0-10" % "3.3.0",
+      "io.spray" %% "spray-json" % "1.3.6",
+      "com.softwaremill.sttp.client3" %% "core" % "3.7.2",
+      "org.apache.spark" %% "spark-sql" % "3.2.0",
+      "org.apache.hadoop" % "hadoop-client" % "3.3.1",
+      "com.softwaremill.sttp.client3" %% "core" % "3.3.15",
+      "io.spray" %% "spray-json" % "1.3.6"
+    )
+  )
