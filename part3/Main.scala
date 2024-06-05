@@ -24,7 +24,7 @@ object KafkaSparkStructuredStreamingApp {
   def main(args: Array[String]): Unit = {
     // Create Spark configuration
     val conf = new SparkConf()
-      .setAppName("Part2Strays")
+      .setAppName("Part3Strays")
       .setMaster("local[*]")
 
     // Create Spark Context
