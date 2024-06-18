@@ -158,6 +158,7 @@ Before starting Hadoop services, ensure that SSH is set up correctly for seamles
     ```sh
     ssh-keygen -t rsa -b 4096 -C "your_email@example.com"
     ```
+    DO NOT DEFINE A PASSWORD
 
 4. **Add the SSH Key to Authorized Keys**:
     ```sh
