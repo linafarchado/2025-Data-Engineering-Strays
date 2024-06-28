@@ -219,6 +219,7 @@ Create necessary directories in HDFS for storing data:
 ```sh
 hdfs dfs -mkdir /user
 hdfs dfs -mkdir /user/yourusername
+hdfs dfs -mkdir /user/yourusername/dronedata
 ```
 
 Replace `yourusername` with your actual username.
