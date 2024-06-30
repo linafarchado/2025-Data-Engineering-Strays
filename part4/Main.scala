@@ -113,6 +113,37 @@ object HDFSParquetReader {
       val correlationsPath = s"$filePath/correlations.csv"
       correlationsDF.write.mode("append").option("header", "true").csv(correlationsPath)
 
+      // Seasonal analysis
+      val seasonalAnalysisDF = parquetFileDF
+        .withColumn("month", month(from_unixtime(col("timestamp"))))
+        .withColumn("season", when(col("month").isin(12, 1, 2), "Winter")
+          .when(col("month").isin(3, 4, 5), "Spring")
+          .when(col("month").isin(6, 7, 8), "Summer")
+          .otherwise("Fall"))
+        .groupBy("season")
+        .agg(count("*").alias("count"), avg("injuryIndex").alias("avgInjuryIndex"))
+      val seasonalAnalysisPath = s"$filePath/seasonalAnalysis.csv"
+      seasonalAnalysisDF.write.mode("append").option("header", "true").csv(seasonalAnalysisPath)
+
+      // Animal density by location
+      val animalDensityDF = parquetFileDF
+        .groupBy("latitude", "longitude", "animalType")
+        .count()
+        .orderBy(desc("count"))
+      val animalDensityPath = s"$filePath/animalDensity.csv"
+      animalDensityDF.write.mode("append").option("header", "true").csv(animalDensityPath)
+
+      // Injury severity categories
+      val injurySeverityDF = parquetFileDF
+        .withColumn("severityCategory", when(col("injuryIndex") < 20, "Low")
+          .when(col("injuryIndex").between(20, 50), "Medium")
+          .when(col("injuryIndex").between(51, 80), "High")
+          .otherwise("Critical"))
+        .groupBy("severityCategory")
+        .count()
+      val injurySeverityPath = s"$filePath/injurySeverity.csv"
+      injurySeverityDF.write.mode("append").option("header", "true").csv(injurySeverityPath)
+
       println("Files successfully written")
     } catch {
       case e: Exception =>
