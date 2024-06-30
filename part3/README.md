@@ -239,10 +239,7 @@ Change this line :
 ```scala
 val hdfsPath = s"hdfs://localhost:9000/user/alexandre/dronedata/batch_$batchId.parquet"
 ```
-and
-```scala
-val hdfsLsResult = "hdfs dfs -ls /user/alexandre/dronedata".!!
-```
+
 
 Change the path ```/user/alexandre/``` with your path
 

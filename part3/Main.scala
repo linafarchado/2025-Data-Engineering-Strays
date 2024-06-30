@@ -4,8 +4,10 @@ import org.apache.spark.sql.{Dataset, SparkSession}
 import org.apache.spark.sql.streaming.Trigger
 import spray.json._
 import DefaultJsonProtocol._
-import scala.sys.process._
+import java.net.InetAddress
+import java.util.UUID
 import scala.util.Try
+
 final case class DroneData(
   id: String,
   timestamp: Long,
@@ -26,7 +28,7 @@ object KafkaSparkStructuredStreamingApp {
     // Create Spark configuration
     val conf = new SparkConf()
       .setAppName("Part3Strays")
-      .setMaster("local[*]")
+      .setMaster("local[*]") // Adjust this for cluster mode
 
     // Create Spark Context
     val sc = SparkContext.getOrCreate(conf)
@@ -45,60 +47,61 @@ object KafkaSparkStructuredStreamingApp {
       .format("kafka")
       .option("kafka.bootstrap.servers", "localhost:9092")
       .option("subscribe", "drone-data")
+      .option("kafka.group.id", "drone-data-group") // Define a consumer group id
+      .option("startingOffsets", "latest") 
+      .option("enable.auto.commit", "false") 
       .load()
 
     // Convert binary data to string
     import spark.implicits._
     val kafkaData = df.selectExpr("CAST(key AS STRING)", "CAST(value AS STRING)").as[(String, String)]
 
+    // Get the hostname of the machine
+    val hostname = InetAddress.getLocalHost.getHostName
+
+    // Generate a unique consumer ID for this instance
+    val consumerId = s"$hostname-${UUID.randomUUID().toString}"
+
     // Process each micro-batch as an RDD
     val query = kafkaData
       .writeStream
       .foreachBatch { (batchDS: Dataset[(String, String)], batchId: Long) =>
-        // Execute hdfs dfs -ls command and parse the result to find the maximum batch ID
-        // Execute hdfs dfs -ls command and parse the result to find the maximum batch ID
-        val hdfsLsResult = "hdfs dfs -ls /user/alexandre/dronedata".!!
-        val batchIds = hdfsLsResult
-          .split("\n") // Split the result into lines
-          .filter(_.contains("batch_")) // Filter lines containing batch_ to exclude other files
-          .flatMap(_.split("/").last.split("\\.").headOption) // Extract the batch ID from the file names
-          .flatMap(_.split("_").lift(1)) // Extract the ID part and convert it to Int
-          .flatMap(id => Try(id.toInt).toOption) // Convert the ID part to Int, filtering out non-integer parts
-        val maxBatchId = if (batchIds.nonEmpty) batchIds.max else 0 // Find the maximum batch ID, or set it to 0 if none found
+        try {
+          // Extract the timestamps of the first and last records in the batch
+          val timestamps = batchDS.map { case (_, jsonString) =>
+            val data = jsonString.parseJson.convertTo[DroneData]
+            data.timestamp
+          }.collect()
 
-        // Determine the next batch ID to use
-        val nextBatchId = maxBatchId + 1
+          if (timestamps.nonEmpty) {
+            val firstTimestamp = timestamps.min
+            val lastTimestamp = timestamps.max
 
-        // Extract the timestamps of the first and last records in the batch
-        val timestamps = batchDS.map { case (_, jsonString) =>
-          val data = jsonString.parseJson.convertTo[DroneData]
-          data.timestamp
-        }.collect()
+            // Convert Dataset to RDD
+            val rdd = batchDS.rdd
 
-        if (timestamps.nonEmpty) {
-          val firstTimestamp = timestamps.min
-          val lastTimestamp = timestamps.max
+            // Convert JSON strings to DroneData objects
+            val droneDataRDD = rdd.map { case (_, jsonString) =>
+              jsonString.parseJson.convertTo[DroneData]
+            }
 
-          // Convert Dataset to RDD
-          val rdd = batchDS.rdd
+            // Convert RDD to Dataset
+            val droneDataDS = spark.createDataset(droneDataRDD)
 
-          // Convert JSON strings to DroneData objects
-          val droneDataRDD = rdd.map { case (_, jsonString) =>
-            jsonString.parseJson.convertTo[DroneData]
+            // Define HDFS path for the batch
+            val hdfsPath = s"hdfs://localhost:9000/user/alexandre/dronedata/batch_${consumerId}_${firstTimestamp}_${lastTimestamp}.parquet"
+
+            // Write the batch in Parquet format
+            droneDataDS.write.mode("append").parquet(hdfsPath)
+
+            println(s"Batch stored in: $hdfsPath")
+          } else {
+            println("Skipping empty batch.")
           }
-
-          // Convert RDD to Dataset
-          val droneDataDS = spark.createDataset(droneDataRDD)
-
-          // Define HDFS path for the batch
-          val hdfsPath = s"hdfs://localhost:9000/user/alexandre/dronedata/batch_${nextBatchId}_${firstTimestamp}_${lastTimestamp}.parquet"
-
-          // Write the batch in Parquet format
-          droneDataDS.write.mode("append").parquet(hdfsPath)
-
-          println(s"Batch stored in: $hdfsPath")
-        } else {
-          println("Skipping empty batch.")
+        } catch {
+          case e: Exception =>
+            e.printStackTrace()
+            println(s"Error processing batch $batchId: ${e.getMessage}")
         }
       }
       .outputMode("append")
