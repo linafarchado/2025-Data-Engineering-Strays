@@ -1,76 +1,126 @@
+import org.apache.spark.SparkConf
 import org.apache.spark.sql.{SparkSession, DataFrame}
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.types._
-import java.nio.file.{Paths, Files}
-import java.nio.charset.StandardCharsets
-import scala.concurrent.duration._
+import java.nio.file.{Files, Paths}
 
-object DroneDataAnalyzer {
+object HDFSParquetReader {
   def main(args: Array[String]): Unit = {
-    val spark = SparkSession.builder()
-      .appName("DroneDataAnalyzer")
-      .master("local[*]")
-      .getOrCreate()
 
-    import spark.implicits._
+    val userName = "lina"
+    val filePath = s"hdfs://localhost:9000/user/$userName"
 
-    val inputPath = "hdfs://localhost:9000/user/lina/dronedata/"
+    // Create Spark configuration and Spark session
+    val conf = new SparkConf().setAppName("HDFSParquetReader").setMaster("local[*]")
+    val spark = SparkSession.builder.config(conf).getOrCreate()
 
-    val files = spark.sparkContext.textFile(inputPath).take(1)
-    println(s"Files in directory: ${files.mkString(", ")}")
+    // Set log level to reduce verbosity
+    spark.sparkContext.setLogLevel("WARN")
 
-    val outputPath = "hdfs://localhost:9000/user/lina/analyzed_data/"
+    try {
+      // Path to the Parquet file in HDFS
+      val hdfsPath = s"$filePath/dronedata/*.parquet"
 
-    def getLatestProcessedTimestamp(): Long = {
-      val path = Paths.get("latest_processed_timestamp.txt")
-      if (Files.exists(path)) {
-        new String(Files.readAllBytes(path), StandardCharsets.UTF_8).toLong
-      } else {
-        0L
-      }
-    }
+      // Read the Parquet file
+      val parquetFileDF = spark.read.parquet(hdfsPath)
 
-    def saveLatestProcessedTimestamp(timestamp: Long): Unit = {
-      val path = Paths.get("latest_processed_timestamp.txt")
-      Files.write(path, timestamp.toString.getBytes(StandardCharsets.UTF_8))
-    }
+      // Animal type distribution
+      val animalTypeDF = parquetFileDF.groupBy("animalType").count()
+      val animaltype = s"$filePath/animaltype.csv"
+      animalTypeDF.write.mode("append").option("header", "true").csv(animaltype)
 
-    // Function to process new data
-    def processNewData(latestTimestamp: Long): Unit = {
-      val newData = spark.read.parquet(inputPath)
-        .filter($"timestamp" > latestTimestamp)
-        .cache()
+      // Injury index distribution
+      val injuryStatsDF = parquetFileDF.select(
+        mean("injuryIndex").alias("avgInjury"),
+        stddev("injuryIndex").alias("stdDevInjury"),
+        min("injuryIndex").alias("minInjury"),
+        max("injuryIndex").alias("maxInjury")
+      )
+      val indexInjury = s"injuryIndex.csv"
+      injuryStatsDF.write.mode("append").option("header", "true").csv(indexInjury)
 
-      if (!newData.isEmpty) {
-        val analyzedData = newData
-          .groupBy("animalType")
-          .agg(
-            count("id").as("count"),
-            avg("injuryIndex").as("avgInjuryIndex"),
-            min("latitude").as("minLatitude"),
-            max("latitude").as("maxLatitude"),
-            min("longitude").as("minLongitude"),
-            max("longitude").as("maxLongitude")
-          )
+      // Average injury index by animal type
+      val avgInjuryByAnimalDF = parquetFileDF.groupBy("animalType")
+        .agg(avg("injuryIndex").alias("avgInjuryIndex"))
+        .orderBy(desc("avgInjuryIndex"))
+      val avgInjury = s"$filePath/avgInjury.csv"
+      avgInjuryByAnimalDF.write.mode("append").option("header", "true").csv(avgInjury)
 
-        // Save analyzed data
-        analyzedData.write.mode("append").parquet(outputPath)
+      // Geographical analysis: incidents by quadrant
+      val geoAnalysisDF = parquetFileDF.withColumn("quadrant",
+        when(col("latitude") >= 0 && col("longitude") >= 0, "NE")
+          .when(col("latitude") >= 0 && col("longitude") < 0, "NW")
+          .when(col("latitude") < 0 && col("longitude") >= 0, "SE")
+          .otherwise("SW")
+      ).groupBy("quadrant").count().orderBy(desc("count"))
+      val geoAnalysisPath = s"$filePath/geoAnalysis.csv"
+      geoAnalysisDF.write.mode("append").option("header", "true").csv(geoAnalysisPath)
 
-        // Update latest processed timestamp
-        val newLatestTimestamp = newData.agg(max("timestamp")).head().getLong(0)
-        saveLatestProcessedTimestamp(newLatestTimestamp)
+      // Time-based analysis: incidents by hour of day
+      val timeAnalysisDF = parquetFileDF.withColumn("hour", hour(from_unixtime(col("timestamp"))))
+        .groupBy("hour")
+        .count()
+        .orderBy("hour")
+      val timeAnalysisPath = s"$filePath/timeAnalysis.csv"
+      timeAnalysisDF.write.mode("append").option("header", "true").csv(timeAnalysisPath)
 
-        println(s"Processed data up to timestamp: $newLatestTimestamp")
-      } else {
-        println("No new data to process.")
-      }
-    }
+      // High severity incidents
+      val highSeverityDF = parquetFileDF.filter(col("injuryIndex") > 50)
+        .select("id", "animalType", "injuryIndex")
+        .orderBy(desc("injuryIndex"))
+      val highSeverityPath = s"$filePath/highSeverity.csv"
+      highSeverityDF.write.mode("append").option("header", "true").csv(highSeverityPath)
 
-    // Main processing loop
-    while (true) {
-      val latestProcessedTimestamp = getLatestProcessedTimestamp()
-      processNewData(latestProcessedTimestamp)
-      Thread.sleep(30.seconds.toMillis)
+      // Tpop 3 animals by total injury index
+      val topAnimalsByTotalInjuryDF = parquetFileDF.groupBy("animalType")
+        .agg(sum("injuryIndex").alias("totalInjuryIndex"))
+        .orderBy(desc("totalInjuryIndex"))
+        .limit(3)
+      val topAnimalsPath = s"$filePath/topAnimals.csv"
+      topAnimalsByTotalInjuryDF.write.mode("append").option("header", "true").csv(topAnimalsPath)
+
+      // Median Injury Index by Animal Type
+      val medianInjuryByAnimalDF = parquetFileDF.groupBy("animalType")
+        .agg(expr("percentile_approx(injuryIndex, 0.5)").alias("medianInjuryIndex"))
+        .orderBy(desc("medianInjuryIndex"))
+      val medianInjuryPath = s"$filePath/medianInjury.csv"
+      medianInjuryByAnimalDF.write.mode("append").option("header", "true").csv(medianInjuryPath)
+
+      // Incidents by Day of Week
+      val incidentsByDayOfWeekDF = parquetFileDF.withColumn("dayOfWeek", date_format(from_unixtime(col("timestamp")), "EEEE"))
+        .groupBy("dayOfWeek")
+        .count()
+        .orderBy("dayOfWeek")
+      val incidentsByDayOfWeekPath = s"$filePath/incidentsByDayOfWeek.csv"
+      incidentsByDayOfWeekDF.write.mode("append").option("header", "true").csv(incidentsByDayOfWeekPath)
+
+      // Density of Incidents by Geographical Area (10x10 degree squares)
+      val incidentsByGeoAreaDF = parquetFileDF.withColumn("latGroup", (col("latitude") / 10).cast("int"))
+        .withColumn("lonGroup", (col("longitude") / 10).cast("int"))
+        .groupBy("latGroup", "lonGroup")
+        .count()
+        .orderBy(desc("count"))
+      val incidentsByGeoAreaPath = s"$filePath/incidentsByGeoArea.csv"
+      incidentsByGeoAreaDF.write.mode("append").option("header", "true").csv(incidentsByGeoAreaPath)
+
+      // Correlation between Injury Index and Latitude/Longitude
+      val corrInjuryLatitude = parquetFileDF.stat.corr("injuryIndex", "latitude")
+      val corrInjuryLongitude = parquetFileDF.stat.corr("injuryIndex", "longitude")
+      val correlationsDF = spark.createDataFrame(Seq(
+        ("injuryIndex_latitude", corrInjuryLatitude),
+        ("injuryIndex_longitude", corrInjuryLongitude)
+      )).toDF("correlationType", "value")
+
+      val correlationsPath = s"$filePath/correlations.csv"
+      correlationsDF.write.mode("append").option("header", "true").csv(correlationsPath)
+
+      println("Files successfully written")
+    } catch {
+      case e: Exception =>
+        e.printStackTrace()
+        println("Error occurred: " + e.getMessage)
+    } finally {
+      // Stop the Spark session
+      spark.stop()
     }
   }
 }

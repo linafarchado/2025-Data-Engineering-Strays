@@ -1,5 +1,3 @@
-import sbtassembly.AssemblyPlugin.autoImport._
-
 ThisBuild / version := "0.1.0-SNAPSHOT"
 ThisBuild / scalaVersion := "2.13.8"
 
@@ -7,19 +5,14 @@ lazy val root = (project in file("."))
   .settings(
     name := "part4",
     libraryDependencies ++= Seq(
-      "org.apache.spark" %% "spark-sql" % "3.2.0" % "provided",
-      "org.apache.spark" %% "spark-core" % "3.2.0" % "provided",
-      "org.apache.hadoop" % "hadoop-client" % "3.2.0"
-    ),
-    assembly / mainClass := Some("DroneDataAnalyzer"),
-    assembly / assemblyJarName := "drone-data-analyzer.jar",
-    assembly / assemblyMergeStrategy := {
-      case PathList("META-INF", xs @ _*) => MergeStrategy.discard
-      case "application.conf"            => MergeStrategy.concat
-      case x =>
-        val oldStrategy = (assembly / assemblyMergeStrategy).value
-        oldStrategy(x)
-    }
+      "org.apache.spark" %% "spark-core" % "3.3.0",
+      "org.apache.spark" %% "spark-sql" % "3.3.0",
+      "org.apache.spark" %% "spark-sql-kafka-0-10" % "3.3.0",
+      "io.spray" %% "spray-json" % "1.3.6",
+      "com.softwaremill.sttp.client3" %% "core" % "3.7.2",
+      "org.apache.spark" %% "spark-sql" % "3.2.0",
+      "org.apache.hadoop" % "hadoop-client" % "3.3.1",
+      "com.softwaremill.sttp.client3" %% "core" % "3.3.15",
+      "io.spray" %% "spray-json" % "1.3.6"
+    )
   )
-
-Compile / run / mainClass := Some("DroneDataAnalyzer")
