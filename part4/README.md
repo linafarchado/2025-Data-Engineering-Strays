@@ -6,7 +6,7 @@ This guide provides step-by-step instructions on how to launch the project. Foll
 
 Make sure you have the following software installed on your system:
 
-- **park**
+- **Spark**
 - **sbt**
 - **Python**
 
