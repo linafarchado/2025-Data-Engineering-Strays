@@ -144,6 +144,45 @@ object HDFSParquetReader {
       val injurySeverityPath = s"$filePath/injurySeverity.csv"
       injurySeverityDF.write.mode("append").option("header", "true").csv(injurySeverityPath)
 
+      // Location data (assuming US states, adjust as needed)
+      val locationDataDF = parquetFileDF
+        .withColumn("state", when(col("latitude") > 40, "North").otherwise("South"))
+        .groupBy("state")
+        .agg(count("*").alias("incident_count"))
+      val locationDataPath = s"$filePath/locationData.csv"
+      locationDataDF.write.mode("append").option("header", "true").csv(locationDataPath)
+
+      // Seasonal data with year
+      val seasonalDataDF = parquetFileDF
+        .withColumn("year", year(from_unixtime(col("timestamp"))))
+        .withColumn("month", month(from_unixtime(col("timestamp"))))
+        .groupBy("year", "month")
+        .agg(count("*").alias("incident_count"))
+        .orderBy("year", "month")
+      val seasonalDataPath = s"$filePath/seasonalData.csv"
+      seasonalDataDF.write.mode("append").option("header", "true").csv(seasonalDataPath)
+
+      // Hourly and daily data
+      val hourlyDailyDataDF = parquetFileDF
+        .withColumn("hour", hour(from_unixtime(col("timestamp"))))
+        .withColumn("day_of_week", date_format(from_unixtime(col("timestamp")), "EEEE"))
+        .groupBy("hour", "day_of_week")
+        .agg(count("*").alias("incident_count"))
+      val hourlyDailyDataPath = s"$filePath/hourlyDailyData.csv"
+      hourlyDailyDataDF.write.mode("append").option("header", "true").csv(hourlyDailyDataPath)
+
+      // Animal type by season
+      val animalSeasonDF = parquetFileDF
+        .withColumn("month", month(from_unixtime(col("timestamp"))))
+        .withColumn("season", when(col("month").isin(12, 1, 2), "Winter")
+          .when(col("month").isin(3, 4, 5), "Spring")
+          .when(col("month").isin(6, 7, 8), "Summer")
+          .otherwise("Fall"))
+        .groupBy("season", "animalType")
+        .agg(count("*").alias("incident_count"))
+      val animalSeasonPath = s"$filePath/animalSeasonData.csv"
+      animalSeasonDF.write.mode("append").option("header", "true").csv(animalSeasonPath)
+
       println("Files successfully written")
     } catch {
       case e: Exception =>

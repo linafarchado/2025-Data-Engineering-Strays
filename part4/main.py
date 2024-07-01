@@ -103,15 +103,34 @@ app.layout = html.Div([
                 ], className="six columns"),
             ], className="row"),
         ]),
+        dcc.Tab(label="Location and Time Analysis", children=[
+            html.Div([
+                html.Div([
+                    dcc.Graph(id='geo-analysis-pie')
+                ], className="six columns"),
+                html.Div([
+                    dcc.Graph(id='seasonal-bar-chart')
+                ], className="six columns"),
+            ], className="row"),
+            html.Div([
+                html.Div([
+                    dcc.Graph(id='hourly-incidents-line')
+                ], className="six columns"),
+                html.Div([
+                    dcc.Graph(id='animal-density-scatter')
+                ], className="six columns"),
+            ], className="row"),
+        ]),
     ])
 ])
 
 # Callbacks for each graph
 @app.callback(Output('animal-density-map', 'figure'), Input('animal-density-map', 'id'))
 def update_animal_density_map(id):
-    fig = px.density_mapbox(animal_density_df, lat='latitude', lon='longitude', z='count', radius=10,
-                            center=dict(lat=0, lon=0), zoom=1, mapbox_style="stamen-terrain",
-                            title='Animal Density Map')
+    fig = px.scatter_mapbox(animal_density_df, lat='latitude', lon='longitude', hover_name='animalType',
+                            hover_data=['count'], color='animalType', zoom=3, height=600,
+                            mapbox_style="carto-positron")
+    fig.update_layout(margin={"r":0,"t":0,"l":0,"b":0}, title='Animal Density Map')
     fig.update_layout(title_font=dict(size=20), title_x=0.5)
     return fig
 
@@ -121,6 +140,7 @@ def update_animal_type_sunburst(id):
                       title='Animal Type Distribution',
                       color='count', color_continuous_scale='Viridis')
     fig.update_layout(title_font=dict(size=20), title_x=0.5)
+    fig.update_traces(textinfo="label+percent entry")
     return fig
 
 @app.callback(Output('animal-type-treemap', 'figure'), Input('animal-type-treemap', 'id'))
@@ -129,6 +149,7 @@ def update_animal_type_treemap(id):
                      title='Animal Type Hierarchy',
                      color='count', color_continuous_scale='Viridis')
     fig.update_layout(title_font=dict(size=20), title_x=0.5)
+    fig.update_traces(textinfo="label+percent entry")
     return fig
 
 @app.callback(Output('injury-index-violin', 'figure'), Input('injury-index-violin', 'id'))
@@ -137,6 +158,7 @@ def update_injury_index_violin(id):
                     title='Injury Index Distribution by Animal Type',
                     color='animalType', color_discrete_sequence=px.colors.qualitative.Pastel)
     fig.update_layout(title_font=dict(size=20), title_x=0.5)
+    fig.update_traces(meanline_visible=True)
     return fig
 
 @app.callback(Output('injury-severity-pie', 'figure'), Input('injury-severity-pie', 'id'))
@@ -145,6 +167,7 @@ def update_injury_severity_pie(id):
                  title='Injury Severity Distribution',
                  color_discrete_sequence=px.colors.sequential.RdBu)
     fig.update_layout(title_font=dict(size=20), title_x=0.5)
+    fig.update_traces(textinfo="label+percent")
     return fig
 
 @app.callback(Output('injury-distribution-ridgeline', 'figure'), Input('injury-distribution-ridgeline', 'id'))
@@ -165,12 +188,13 @@ def update_incidents_by_hour_area(id):
                   title='Incidents by Hour of Day',
                   color_discrete_sequence=['#FFA07A'])
     fig.update_layout(title_font=dict(size=20), title_x=0.5)
+    fig.update_traces(line_shape='spline')
     return fig
 
 @app.callback(Output('incidents-by-day-polar', 'figure'), Input('incidents-by-day-polar', 'id'))
 def update_incidents_by_day_polar(id):
     fig = px.bar_polar(incidents_by_day_df, r='count', theta='dayOfWeek',
-                       title='Incidents by Day of Week',
+                       title='Incidents by Day of the Week',
                        color='count', color_continuous_scale='Viridis')
     fig.update_layout(title_font=dict(size=20), title_x=0.5)
     return fig
@@ -189,6 +213,7 @@ def update_geo_analysis_bubble(id):
                      title='Geographical Distribution of Incidents',
                      color_continuous_scale='Viridis', size_max=50)
     fig.update_layout(title_font=dict(size=20), title_x=0.5)
+    fig.update_traces(marker=dict(sizemode='diameter'))
     return fig
 
 @app.callback(Output('quadrant-analysis-sunburst', 'figure'), Input('quadrant-analysis-sunburst', 'id'))
@@ -197,6 +222,7 @@ def update_quadrant_analysis_sunburst(id):
                       title='Incidents by Quadrant',
                       color='count', color_continuous_scale='Viridis')
     fig.update_layout(title_font=dict(size=20), title_x=0.5)
+    fig.update_traces(textinfo="label+percent entry")
     return fig
 
 @app.callback(Output('high-severity-parallel', 'figure'), Input('high-severity-parallel', 'id'))
@@ -211,8 +237,49 @@ def update_high_severity_parallel(id):
 @app.callback(Output('top-animals-injury-funnel', 'figure'), Input('top-animals-injury-funnel', 'id'))
 def update_top_animals_injury_funnel(id):
     fig = px.funnel(top_animals_df, x='totalInjuryIndex', y='animalType',
-                    title='Top Animals by Total Injury Index')
+                    title='Top Animals by Total Injury Index',
+                    color='animalType', color_discrete_sequence=px.colors.qualitative.Safe)
     fig.update_layout(title_font=dict(size=20), title_x=0.5)
+    return fig
+
+@app.callback(Output('geo-analysis-pie', 'figure'), Input('geo-analysis-pie', 'id'))
+def update_geo_analysis_pie(id):
+    fig = px.pie(geo_analysis_df, values='count', names='quadrant',
+                 title='Incident Distribution by Quadrant',
+                 color_discrete_sequence=px.colors.qualitative.Pastel)
+    fig.update_layout(title_font=dict(size=20), title_x=0.5)
+    fig.update_traces(textinfo="label+percent")
+    return fig
+
+@app.callback(Output('seasonal-bar-chart', 'figure'), Input('seasonal-bar-chart', 'id'))
+def update_seasonal_bar_chart(id):
+    fig = px.bar(seasonal_analysis_df, x='season', y='count',
+                 title='Seasonal Analysis of Incidents',
+                 color='avgInjuryIndex', text='count',
+                 color_continuous_scale="Viridis")
+    fig.update_layout(title_font=dict(size=20), title_x=0.5)
+    fig.update_traces(marker=dict(line=dict(color='#333', width=2)))
+    return fig
+
+@app.callback(Output('hourly-incidents-line', 'figure'), Input('hourly-incidents-line', 'id'))
+def update_hourly_incidents_line(id):
+    fig = px.line(time_analysis_df, x='hour', y='count',
+                  title='Incidents by Hour of Day',
+                  labels={'count': 'Number of Incidents', 'hour': 'Hour of Day'},
+                  line_shape="spline", render_mode="svg",
+                  color_discrete_sequence=px.colors.sequential.Viridis)
+    fig.update_layout(title_font=dict(size=20), title_x=0.5)
+    return fig
+
+@app.callback(Output('animal-density-scatter', 'figure'), Input('animal-density-scatter', 'id'))
+def update_animal_density_scatter(id):
+    fig = px.scatter(animal_density_df, x='longitude', y='latitude',
+                     size='count', color='animalType',
+                     hover_data=['animalType', 'count'],
+                     title='Animal Density Distribution',
+                     color_discrete_sequence=px.colors.qualitative.Safe)
+    fig.update_layout(title_font=dict(size=20), title_x=0.5)
+    fig.update_traces(marker=dict(line=dict(color='#333', width=2)))
     return fig
 
 # Run the app
