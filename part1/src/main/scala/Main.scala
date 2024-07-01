@@ -17,7 +17,7 @@ final case class DroneData(
                           )
 
 object DroneDataSimulator {
-  val animalTypes = List("Cat", "Dog", "Bird", "Rabbit")
+  val animalTypes = List("Cat", "Dog", "Bird", "Rabbit", "Squirrel", "Hedgehog", "Fish", "Unicorn", "Capybara", "Llama")
 
   def generateRandomData(): DroneData = {
     val id = java.util.UUID.randomUUID().toString
