@@ -60,8 +60,8 @@ Cette architecture décrit le système de traitement des données et d'alerte im
 - **Ingestion de données** : Kafka ingère les données des appareils IoT et les transmet à la couche de traitement.
 - **Traitement en flux** : Apache Spark traite les flux de données entrants en temps réel.
 - **Génération d'alertes** : Basé sur les données traitées, des alertes en temps réel sont générées et envoyées via Telegram.
-- **Stockage des données** : Les données traitées sont stockées dans le lac de données pour un stockage à long terme et une analyse ultérieure.
-- **Analyse des données** : Les données dans le lac de données sont analysées à l'aide de Pandas et de modèles d'apprentissage automatique dans TensorFlow pour extraire des informations et effectuer des analyses avancées.
+- **Stockage des données** : Les données traitées sont stockées dans le datalake pour un stockage à long terme et une analyse ultérieure.
+- **Analyse des données** : Les données dans le datalake sont analysées à l'aide de Pandas.
 
 ### Instructions pour lancer le code
 
