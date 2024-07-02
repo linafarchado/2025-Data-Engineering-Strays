@@ -26,14 +26,43 @@ L'architecture doit fournir une analyse en temps réel et des capacités de noti
 
 **Composant à Choisir :**
 
-- **Système de Stream Processing** : Apache Spark pour analyser les flux de données en temps réel.
-- **Système de Notifications** : Intégration avec un service de messagerie instantanée tel que Telegram pour diffuser les alertes. Le système doit pouvoir gérer 2 types de notifications : les normales et les urgentes (en cas d'animaux blessés)
+Voici une explication en Markdown de l'architecture :
 
-## Composants de l'Architecture du Système
+---
 
-- **Appareils IoT** : Drones avec caméras, IA intégré (pour détecter les animaux et calculer les indices de blessure) et capteurs collectant des données.
-- **Ingestion Layer** : Apache Kafka gérant le flux de données.
-- **Stream Processing** : Apache Spark pour l'analyse des données en temps réel.
-- **Système d'Alerte** : Telegram pour les notifications instantanées.
-- **Stockage de Données** : MongoDB pour les besoins de stockage NoSQL.
-- **Analytique** : Python, Pandas et TensorFlow pour la manipulation et l'analyse des données pour des statistiques à long terme.
+## Vue d'ensemble de l'architecture
+
+Cette architecture décrit le système de traitement des données et d'alerte impliquant des appareils IoT, ingestion de données, traitement en flux, alertes et analyses.
+
+### Composants
+
+1. **Appareils IoT**
+    - Ceux-ci incluent des drones, des caméras et des capteurs qui collectent divers types de données.
+    
+2. **Couche d'ingestion**
+    - Utilise **Kafka** pour ingérer des données des appareils IoT. Kafka est responsable de la gestion des flux de données en temps réel et de garantir le transfert fiable des données.
+    
+3. **Traitement en flux**
+    - **Apache Spark** est utilisé pour le traitement en flux. Il traite les données en temps réel pour assurer des analyses et des actions rapides.
+    
+4. **Système d'alerte**
+    - Intégré avec **Telegram** pour envoyer des alertes en temps réel basées sur les données traitées par le composant de traitement en flux.
+    
+5. **Datalake**
+    - Un réservoir de stockage qui conserve une grande quantité de données brutes dans leur format natif jusqu'à ce qu'elles soient nécessaires pour un traitement ou une analyse ultérieure.
+    
+6. **Analytique**
+    - Utilise **Pandas** pour la manipulation des données. Ce composant est crucial pour extraire des informations et des analyses prédictives à partir des données stockées.
+
+### Flux de travail
+
+- **Collecte de données** : Les appareils IoT capturent des données et les envoient à la couche d'ingestion.
+- **Ingestion de données** : Kafka ingère les données des appareils IoT et les transmet à la couche de traitement.
+- **Traitement en flux** : Apache Spark traite les flux de données entrants en temps réel.
+- **Génération d'alertes** : Basé sur les données traitées, des alertes en temps réel sont générées et envoyées via Telegram.
+- **Stockage des données** : Les données traitées sont stockées dans le lac de données pour un stockage à long terme et une analyse ultérieure.
+- **Analyse des données** : Les données dans le lac de données sont analysées à l'aide de Pandas et de modèles d'apprentissage automatique dans TensorFlow pour extraire des informations et effectuer des analyses avancées.
+
+### Instructions pour lancer le code
+
+Vous pouvez trouver les instructions pour lancer le code dans chaque dossier contenant des fichiers `build.sbt`. Ces dossiers comprennent tous les détails nécessaires de build et de configuration pour démarrer les composants respectifs.
