@@ -237,7 +237,7 @@ hdfs dfs -ls /user/yourusername
 Change this line :
 
 ```scala
-val hdfsPath = s"hdfs://localhost:9000/user/alexandre/dronedata/batch_$batchId.parquet"
+val hdfsPath = s"hdfs://localhost:9000/user/alexandre/dronedata/batch_${consumerId}_${firstTimestamp}_${lastTimestamp}.parquet"
 ```
 
 
@@ -259,4 +259,12 @@ Then you can see the parquet file with the following command :
 
 ```bash
 parquet-tools show testing/NAME_OF_FILE.parquet
+```
+
+## TO LAUNCH
+
+You can use the following command to launch this part.
+
+```bash
+sbt run
 ```

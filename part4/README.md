@@ -20,11 +20,21 @@ pip install dash pandas plotly pyspark matplotlib seaborn numpy
 
 ## Step-by-Step Instructions
 
-### 1. Prepare the Data
+### 1. Change path
+
+Change in Main.scala 
+```bash
+val userName = "lina"
+```
+and in main.py
+```bash
+base_path = "hdfs://localhost:9000/user/lina/"
+```
+### 2. Prepare the Data
 
 If you already have the data in your storage, you can continue to the next steps. If not, follow the data preparation instructions provided in the RADME of parts 1 and 3.
 
-### 2. Run the Scala Analysis
+### 3. Run the Scala Analysis
 
 Navigate to the project directory ```part4/``` and use sbt to run the Scala analysis. This will generate the required `.csv` files.
 
